@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>可口可樂組合餐試算</title>
+    <!-- 外部庫引用 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         :root {
             --primary-color: #B30007;
@@ -73,6 +75,7 @@
 
         .input-group {
             margin-bottom: 20px;
+            position: relative;
         }
 
         label {
@@ -85,6 +88,7 @@
         input {
             width: 100%;
             padding: 12px;
+            padding-left: 30px;
             border: 2px solid #ddd;
             border-radius: 8px;
             font-size: 16px;
@@ -96,9 +100,10 @@
             outline: none;
             border-color: var(--primary-color);
             box-shadow: 0 0 0 3px rgba(179, 0, 7, 0.1);
+            transform: translateY(-2px);
         }
 
-        button {
+        .calculate-btn {
             background-color: var(--primary-color);
             color: white;
             padding: 15px 30px;
@@ -114,7 +119,7 @@
             transition: all 0.3s ease;
         }
 
-        button:hover {
+        .calculate-btn:hover {
             background-color: var(--secondary-color);
             transform: translateY(-2px);
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
@@ -170,6 +175,57 @@
             font-weight: bold;
         }
 
+        .hint {
+            font-size: 0.8em;
+            color: #666;
+            font-weight: normal;
+        }
+
+        input[readonly] {
+            background-color: #f8f9fa;
+            cursor: not-allowed;
+        }
+
+        .export-btn {
+            background-color: #28a745;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            margin: 20px 0;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .export-btn:hover {
+            background-color: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .export-btn i {
+            font-size: 1.2em;
+        }
+
+        @media print {
+            body {
+                background: white;
+            }
+            .container, .result {
+                box-shadow: none;
+                margin: 0;
+                padding: 20px;
+            }
+            .export-btn {
+                display: none !important;
+            }
+        }
+
         @media (max-width: 768px) {
             .container {
                 padding: 15px;
@@ -190,22 +246,22 @@
         <h1 class="page-title"><i class="fas fa-calculator"></i> 可口可樂組合餐試算</h1>
     </div>
 
-    <div class="container">
+    <div class="container" id="inputSection">
         <div class="column">
             <h2 class="section-title">🔴 推廣前數據</h2>
-            <div class="input-group">
+            <div class="input-group" data-currency>
                 <label>餐點售價 ($)</label>
                 <input type="number" id="mealPrice" placeholder="輸入餐點售價">
             </div>
-            <div class="input-group">
+            <div class="input-group" data-currency>
                 <label>餐點成本 ($)</label>
                 <input type="number" id="mealCost" placeholder="輸入餐點成本">
             </div>
-            <div class="input-group">
+            <div class="input-group" data-currency>
                 <label>可口可樂售價 ($)</label>
                 <input type="number" id="cokePrice" placeholder="輸入可樂售價">
             </div>
-            <div class="input-group">
+            <div class="input-group" data-currency>
                 <label>可口可樂成本 ($)</label>
                 <input type="number" id="cokeCost" placeholder="輸入可樂成本">
             </div>
@@ -221,37 +277,98 @@
 
         <div class="column">
             <h2 class="section-title">🟢 推廣後數據</h2>
-            <div class="input-group">
+            <div class="input-group" data-currency>
                 <label>組合餐售價 ($)</label>
                 <input type="number" id="comboPrice" placeholder="輸入組合餐價格">
             </div>
             <div class="input-group">
-                <label>選擇組合餐的顧客數</label>
+                <label>選擇組合餐的顧客數 <span class="hint">(不可超過原有餐點顧客數)</span></label>
                 <input type="number" id="comboCustomers" placeholder="輸入選擇組合餐的顧客數">
             </div>
             <div class="input-group">
-                <label>仍單買餐點的顧客數</label>
-                <input type="number" id="mealOnlyCustomers" placeholder="輸入仍單買餐點的顧客數">
+                <label>仍單買餐點的顧客數 <span class="hint">(自動計算)</span></label>
+                <input type="number" id="mealOnlyCustomers" placeholder="自動計算" readonly>
             </div>
             <div class="input-group">
                 <label>仍單買可樂的顧客數</label>
                 <input type="number" id="cokeOnlyCustomers" placeholder="輸入仍單買可樂的顧客數">
             </div>
         </div>
+
+        <button onclick="exportToPDF('inputSection', '可口可樂組合餐試算_輸入資料.pdf')" class="export-btn">
+            <i class="fas fa-file-pdf"></i> 輸出輸入資料PDF
+        </button>
     </div>
 
-    <button onclick="calculateProfit()">
+    <button onclick="calculateProfit()" class="calculate-btn">
         <i class="fas fa-chart-line"></i> 開始計算
     </button>
 
     <div class="result" id="result"></div>
-
+    
+    <button onclick="exportToPDF('result', '可口可樂組合餐試算_計算結果.pdf')" 
+            class="export-btn" 
+            id="exportResultBtn" 
+            style="display: none;">
+        <i class="fas fa-file-pdf"></i> 輸出計算結果PDF
+    </button>
     <script>
         function formatNumber(num) {
             return num.toLocaleString();
         }
-        
+
+        function exportToPDF(elementId, filename) {
+            const element = document.getElementById(elementId);
+            const opt = {
+                margin: 1,
+                filename: filename,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+            };
+
+            html2pdf().set(opt).from(element).save();
+        }
+
         function calculateProfit() {
+            // 驗證所有輸入
+            const inputs = document.querySelectorAll('input[type="number"]');
+            let hasError = false;
+            
+            // 獲取關鍵數值進行特殊驗證
+            const originalMealCustomers = parseInt(document.getElementById('mealCustomers').value) || 0;
+            const comboCustomers = parseInt(document.getElementById('comboCustomers').value) || 0;
+            const mealOnlyCustomers = parseInt(document.getElementById('mealOnlyCustomers').value) || 0;
+
+            inputs.forEach(input => {
+                const value = input.value.trim();
+                if (value === '' || isNaN(value) || parseFloat(value) < 0) {
+                    input.style.borderColor = '#dc3545';
+                    hasError = true;
+                } else {
+                    input.style.borderColor = '#ddd';
+                }
+            });
+
+            // 檢查組合餐顧客數是否超過原有餐點顧客數
+            if (comboCustomers > originalMealCustomers) {
+                alert('組合餐顧客數不能超過原有餐點顧客總數');
+                document.getElementById('comboCustomers').style.borderColor = '#dc3545';
+                return;
+            }
+
+            // 檢查單點餐點顧客數是否符合邏輯
+            if (comboCustomers + mealOnlyCustomers > originalMealCustomers) {
+                alert('推廣後的總顧客數（組合餐 + 單點餐點）不能超過原有餐點顧客總數');
+                document.getElementById('mealOnlyCustomers').style.borderColor = '#dc3545';
+                return;
+            }
+
+            if (hasError) {
+                alert('請確保所有欄位都填入有效的正數');
+                return;
+            }
+
             // 獲取輸入值並轉換為數字
             let mealPrice = parseFloat(document.getElementById('mealPrice').value) || 0;
             let mealCost = parseFloat(document.getElementById('mealCost').value) || 0;
@@ -260,8 +377,6 @@
             let mealCustomers = parseInt(document.getElementById('mealCustomers').value) || 0;
             let cokeCustomers = parseInt(document.getElementById('cokeCustomers').value) || 0;
             let comboPrice = parseFloat(document.getElementById('comboPrice').value) || 0;
-            let comboCustomers = parseInt(document.getElementById('comboCustomers').value) || 0;
-            let mealOnlyCustomers = parseInt(document.getElementById('mealOnlyCustomers').value) || 0;
             let cokeOnlyCustomers = parseInt(document.getElementById('cokeOnlyCustomers').value) || 0;
 
             // 計算日營收和利潤
@@ -385,7 +500,87 @@
                     </div>
                 </div>
             `;
+
+            // 在完成原有計算後調用Break Even分析
+            calculateBreakEven();
+
+            // 顯示輸出結果按鈕
+            document.getElementById('exportResultBtn').style.display = 'block';
         }
+
+        function calculateBreakEven() {
+            // 獲取基本數據
+            const mealPrice = parseFloat(document.getElementById('mealPrice').value) || 0;
+            const mealCost = parseFloat(document.getElementById('mealCost').value) || 0;
+            const cokePrice = parseFloat(document.getElementById('cokePrice').value) || 0;
+            const cokeCost = parseFloat(document.getElementById('cokeCost').value) || 0;
+            const mealCustomers = parseInt(document.getElementById('mealCustomers').value) || 0;
+            const cokeCustomers = parseInt(document.getElementById('cokeCustomers').value) || 0;
+            const comboPrice = parseFloat(document.getElementById('comboPrice').value) || 0;
+
+            // 計算推廣前的總利潤
+            const originalProfit = (mealCustomers * (mealPrice - mealCost)) + 
+                                  (cokeCustomers * (cokePrice - cokeCost));
+
+            // 計算每個組合餐的利潤
+            const profitPerCombo = comboPrice - (mealCost + cokeCost);
+
+            // 計算達到原有利潤所需的組合餐數量
+            const breakEvenCombos = Math.ceil(originalProfit / profitPerCombo);
+
+            // 在結果區域顯示分析
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML += `
+                <div class="result-section">
+                    <h3 class="result-title">
+                        <i class="fas fa-balance-scale"></i> 損益平衡分析
+                    </h3>
+                    <div class="calculation-process">
+                        <p><strong>推廣前每日總利潤：</strong> $${formatNumber(originalProfit)}</p>
+                        <p><strong>每個組合餐利潤：</strong> $${formatNumber(profitPerCombo)}</p>
+                        <p><strong>計算方式：</strong></p>
+                        <p>所需組合餐數 = 原有總利潤 ÷ 每個組合餐利潤</p>
+                        <p>= $${formatNumber(originalProfit)} ÷ $${formatNumber(profitPerCombo)}</p>
+                    </div>
+                    <div class="result-value">
+                        <p>要達到原有利潤水平，每日至少需要售出 
+                        <span style="color: var(--primary-color); font-weight: bold; font-size: 1.2em;">
+                            ${formatNumber(breakEvenCombos)}
+                        </span> 份組合餐</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        function resetForm() {
+            const inputs = document.querySelectorAll('input[type="number"]');
+            inputs.forEach(input => {
+                input.value = '';
+                input.style.borderColor = '#ddd';
+            });
+            document.getElementById('result').innerHTML = '';
+        }
+
+        // 當頁面載入完成後添加事件監聽器
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('comboCustomers').addEventListener('input', function() {
+                const originalMealCustomers = parseInt(document.getElementById('mealCustomers').value) || 0;
+                const comboCustomers = parseInt(this.value) || 0;
+                
+                // 計算剩餘單點餐點顧客數
+                const remainingMealCustomers = Math.max(0, originalMealCustomers - comboCustomers);
+                
+                // 更新單點餐點顧客數輸入框
+                document.getElementById('mealOnlyCustomers').value = remainingMealCustomers;
+                
+                // 視覺反饋
+                const mealOnlyInput = document.getElementById('mealOnlyCustomers');
+                mealOnlyInput.style.backgroundColor = '#e8f5e9';
+                setTimeout(() => {
+                    mealOnlyInput.style.backgroundColor = '';
+                }, 500);
+            });
+        });
     </script>
 </body>
 </html>
